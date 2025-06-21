@@ -69,7 +69,7 @@ Module File Organization
 
 Modules 1 (WHOIS Lookup) and 2 (Nmap Integration) are located in reconnaissance.py.
 
-Modules 3 (HTTP Header Analysis), 4 (HTTP Method Detection), and 5 (SSL/TLS Inspection) are implemented in vuln_THEONE.py.
+Modules 3 (HTTP Header Analysis), 4 (HTTP Method Detection), and 5 (SSL/TLS Inspection) are implemented in **vuln_THEONE.py**.
 
 CVE Correlation Module Evolution
 
