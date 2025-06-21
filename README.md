@@ -73,7 +73,7 @@ Modules 3 (HTTP Header Analysis), 4 (HTTP Method Detection), and 5 (SSL/TLS Insp
 
 CVE Correlation Module Evolution
 
-Initially, CVE correlation was handled using a simple flat-file parser implemented in reading_cve_valid.py. This approach parsed large monolithic JSON files for every query, resulting in long query times (5+ minutes) and no support for version range matching.
+Initially, CVE correlation was handled using a simple flat-file parser implemented in **reading_cve_valid.py**. This approach parsed large monolithic JSON files for every query, resulting in long query times (5+ minutes) and no support for version range matching.
 
 The new and currently implemented approach is a highly optimized system that uses reverse indexing and a tree-structured CVE database, built with **REVERSE_INDEX_BUILD_1.py** (which can be found in the **utilities** folder) and queried with **READING_CVE_DATABASE_LOOKUP.py**. This design allows instant CVE lookups, full version range support, and scalable performance, reducing query time to under a second even with extensive datasets.
 
