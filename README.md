@@ -92,5 +92,14 @@ cve_data/
     ├── CVE-2022-42xxx/
     └── ...
 ```
+## Steps Involved to run
 
+Step 1: Download the local database shown above (https://github.com/fkie-cad/nvd-json-data-feeds) and make sure it's "cve_data" (can be anything but for consistency sake)
+Step 2: Run **REVERSE_INDEX_BUILD_1.py** but make sure to edit where your "cve_data" directory is placed at the beginning of the code, paste your file path there.
+Step 3: After running the code you'd have an output file **reverse_index.json**, make sure it's placed in the main directory where the main source codes are.
+Step 4: Before starting the main program, go to the **READING_CVE_DATABASE_LOOKUP.py** file and scroll to the `VulnerabilityScanner` class and confirm the name of the local database you downloaded (if you left it as cve_data there's no need to follow this step as that's the default name there)
+Step 5: run **main.py**
+
+## NOTE
+Incase you're not getting generated reports, go to **report_generator.py** and scroll to the function `save_report` i.e. `def save_report` and change the `output_dir` to the folder name for this program in your system.
 ---
