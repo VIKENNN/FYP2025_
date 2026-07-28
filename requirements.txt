@@ -1,0 +1,7 @@
+python-whois
+python-nmap
+requests
+certifi
+prettytable
+reportlab
+tabulate
