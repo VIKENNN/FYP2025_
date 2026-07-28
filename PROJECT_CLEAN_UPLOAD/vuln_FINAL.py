@@ -1,7 +1,7 @@
 import time
 
 # import requests
-from PROJECT_FINAL import READING_CVE_DATABASE_LOOKUP
+import READING_CVE_DATABASE_LOOKUP
 from misc_modules import my_ruler
 import Session
 
