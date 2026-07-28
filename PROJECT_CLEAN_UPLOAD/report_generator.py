@@ -262,7 +262,7 @@ class ReportGenerator:
 
     def save_report(self, report_text, pdf_elements, target_host, target_url):
         """Save report to text and PDF files"""
-        output_dir = "../PROJECT_FINAL/scan_reports"
+        output_dir = "scan_reports"
         os.makedirs(output_dir, exist_ok=True)
         safe_host = self._sanitize_filename(target_host)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
