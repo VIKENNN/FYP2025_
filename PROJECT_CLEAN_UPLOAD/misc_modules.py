@@ -5,12 +5,17 @@ import socket
 from urllib.parse import urlparse
 
 
-
+# def clean_target(target):
+#     parsed = urlparse(target if target.startswith(('http://', 'https://')) else 'http://' + target)
+#     if parsed.netloc:
+#         return parsed.netloc  # hostname only
+#     return target
 def clean_target(target):
-    parsed = urlparse(target if target.startswith(('http://', 'https://')) else 'http://' + target)
-    if parsed.netloc:
-        return parsed.netloc  # hostname only
-    return target
+    # Ensure scheme is present
+    url = target if target.startswith(('http://', 'https://')) else 'http://' + target
+    parsed = urlparse(url)
+    host = parsed.netloc if parsed.netloc else target
+    return url, host  # return both
 
 def resolve_url_to_ip(url): #Resolves a given URL or hostname to an IP address.
     try:
@@ -27,7 +32,7 @@ def resolve_url_to_ip(url): #Resolves a given URL or hostname to an IP address.
 
 
 def my_ruler():
-    print("===================================================================================================================")
+    print("\n===================================================================================================================\n")
 def clear_terminal():
     if os.name == 'nt':
         os.system('cls')

@@ -8,11 +8,12 @@ from prettytable import PrettyTable
 import time
 import urllib
 import urllib.request
-#from urllib.request import urlopen
 from urllib.error import URLError
 import nmap
 from misc_modules import my_ruler
 from misc_modules import resolve_url_to_ip
+import Session
+
 
 #WHOIS Function
 #=======================================================================================================================
@@ -25,7 +26,8 @@ def perform_combined_whois_lookup(target):
     # Step 1: Query with whois module
     try:
         print("[INFO] Querying WHOIS module...")
-        domain_whois = whois.whois(target)
+        domain = target
+        domain_whois = whois.whois(domain)
         combined_data["Creation Date"] = domain_whois.creation_date
         combined_data["Expiration Date"] = domain_whois.expiration_date
         combined_data["Last Updated"] = domain_whois.updated_date
@@ -109,8 +111,9 @@ def display_combined_whois_data(data):
     """
     if not data:
         print("[INFO] No data available.")
-        return
-
+        return {"whois": "No data available"}
+    
+    
     print("\n[WHOIS Lookup Results]")
     print(f"Creation Date: {data.get('Creation Date', 'Not Available')}")
     print(f"Expiration Date: {data.get('Expiration Date', 'Not Available')}")
@@ -136,7 +139,26 @@ def display_combined_whois_data(data):
             print("---")
     else:
         print("No contact details found.")
-
+        
+        # --- returning structured values ---
+    return {
+        "whois": {
+            "Creation Date": data.get("Creation Date", "Not Available"),
+            "Expiration Date": data.get("Expiration Date", "Not Available"),
+            "Last Updated": data.get("Last Updated", "Not Available"),
+            "Registrar": data.get("Registrar", "Not Available"),
+            "Domain Status": data.get("Domain Status", "Not Available"),
+            "Name Servers": data.get("Name Servers", "Not Available"),
+            "IP Range": data.get("IP Range", "Not Available"),
+            "Net Name": data.get("Net Name", "Not Available"),
+            "Description": data.get("Description", "Not Available"),
+            "Country": data.get("Country", "Not Available"),
+            "Organization": data.get("Organization", "Not Available"),
+            "Maintainers": data.get("Maintainers", "Not Available"),
+            "Contacts": data.get("Contacts", []),
+        }
+    }
+    
 #=======================================================================================================================
 
 def dns_lookup(target):
@@ -157,144 +179,160 @@ def dns_lookup(target):
 #=======================================================================================================================
 #Version Scan
 def nmap_scan1(host):
-    # Create a PortScanner object which will interface with Nmap
     scanner = nmap.PortScanner()
-
     try:
-        # Run the Nmap scan on the host with the user-provided arguments (default: -sV -O)
-        print(f"Running Nmap scan on {host}")
         scanner.scan(hosts=host, arguments="-sV -O -F")
-
-        # Check if scan results are available
         if host not in scanner.all_hosts():
-            return f"[ERROR] No scan results for {host}. Please check if the host is reachable."
+            return {"error": f"No scan results for {host}"}
 
-        # Create a table to display results for open ports and their service versions
-        table = PrettyTable()
-        table.field_names = ["Protocol", "Port", "Service", "Version", "State"]
-
-        # Iterate over all protocols (e.g., TCP, UDP) found by the scan
+        results = []
         for proto in scanner[host].all_protocols():
-            # For each protocol, get the list of open ports, services, and their version
             for port in scanner[host][proto].keys():
                 state = scanner[host][proto][port]['state']
                 service = scanner[host][proto][port].get('name', 'N/A')
                 version = scanner[host][proto][port].get('version', 'N/A')
-                table.add_row([proto, port, service, version, state])
+                results.append({
+                    "Protocol": proto,
+                    "Port": port,
+                    "Service": service,
+                    "Version": version,
+                    "State": state
+                })
 
-        # Get the OS detection result if available
         os_fingerprint = scanner[host].get("osmatch", [])
-        os_info = "N/A"
-        if os_fingerprint:
-            os_info = os_fingerprint[0].get("name", "Unknown OS")
+        os_info = os_fingerprint[0].get("name", "Unknown OS") if os_fingerprint else "N/A"
+        cpe_info = os_fingerprint[0].get("cpe", "N/A") if os_fingerprint else "N/A"
 
-            # Filter out device-specific results by checking for common device keywords
-            if "VoIP phone" in os_info or "router" in os_info or "camera" in os_info:
-                os_info = "Device detected, OS not detected"  # Customize as needed
-
-        # Capture Service Info (e.g., CPE info about the OS)
-        service_info = scanner[host].get('hostnames', [])
-        if 'osmatch' in scanner[host]:
-            service_info = scanner[host].get('osmatch', [])
-
-        cpe_info = "N/A"
-        if 'osmatch' in scanner[host] and len(scanner[host]['osmatch']) > 0:
-            cpe_info = scanner[host]['osmatch'][0].get('cpe', 'N/A')
-
-        # Return the formatted table as a string, OS info, and Service Info
-        return f"[INFO] Nmap Scan Results:\n{table}\n\n[INFO] OS Detection: {os_info}\n[INFO] CPE Info: {cpe_info}"
+        return {
+            "scan_type": "Version Scan",
+            "results": results,
+            "os_info": os_info,
+            "cpe_info": cpe_info
+        }
 
     except Exception as e:
-        # If an error occurs (e.g., no connection, invalid host), handle it here
-        return f"[ERROR] Nmap scan failed: {e}"
+        return {"error": str(e)}
 #========================================================================================================================
 #Quick Scan
 def nmap_scan2(host, nmap_arguments='-sS -p 1-1000'):
-    # Create a PortScanner object which will interface with Nmap
     scanner = nmap.PortScanner()
-
     try:
-        # Run the Nmap scan on the host with the user-provided arguments
         scanner.scan(hosts=host, arguments=nmap_arguments)
 
-        # Create a table to display results
-        table = PrettyTable()
-        table.field_names = ["Protocol", "Port", "Service", "State"]  # Include the "Service" column
-
-        # Iterate over all protocols (e.g., TCP, UDP) found by the scan
+        results = []
         for proto in scanner[host].all_protocols():
-            # For each protocol, get the list of open ports and their state
             for port in scanner[host][proto].keys():
                 state = scanner[host][proto][port]['state']
-                service = scanner[host][proto][port].get('name', 'N/A')  # Get the service name for each port
-                table.add_row([proto, port, service, state])  # Add service to the table row
+                service = scanner[host][proto][port].get('name', 'N/A')
+                results.append({
+                    "Protocol": proto,
+                    "Port": port,
+                    "Service": service,
+                    "State": state
+                })
 
-        # Return the formatted table as a string
-        return f"[INFO] Nmap Scan Results:\n{table}"
+        return {
+            "scan_type": "Quick Scan",
+            "results": results
+        }
 
     except Exception as e:
-        # If an error occurs (e.g., no connection, invalid host), handle it here
-        return f"[ERROR] Nmap scan failed: {e}"
+        return {"error": str(e)}
 
 
 
 def nmap_scans(target):
-
-#        target = input("\033[1;91m[+] Enter Domain or IP Address: \033[1;m").lower()
     case = input(
         """What type of scan would you like?
         [+]1. Quick Scan
         [+]2. Version Scan
         [+]3. Known Ports Scan
         Enter choice: """
-    ).strip()  # Strip any accidental spaces
+    ).strip()
 
-    os.system("clear" if os.name == "posix" else "cls")  # Clears terminal screen (Linux/Mac = clear, Windows = cls)
+    os.system("clear" if os.name == "posix" else "cls")
 
     print(f"\033[34m[~] Scanning with Nmap: \033[0m{target}")
     print("This will take a moment... Get some coffee 😃\n")
 
+    # Run the appropriate scan
     if case == '1':
-        nmap_scan1(target)
+        result = nmap_scan2(target)   # Quick Scan
     elif case == '2':
-        nmap_scan2(target)
+        result = nmap_scan1(target)   # Version Scan
     elif case == '3':
-        pass  # Placeholder if you have a function for known ports scan
+        print("[INFO] Known Ports Scan not yet implemented.")
+        return None
     else:
         print("\033[31m[!] Invalid entry. Please choose a valid option.\033[0m")
+        return None
+
+    # If there was an error
+    if "error" in result:
+        print(f"\033[31m[!] {result['error']}\033[0m")
+        return result
+
+    # Prepare PrettyTable for terminal output
+    if "results" in result and result["results"]:
+        table = PrettyTable()
+        headers = list(result["results"][0].keys())
+        table.field_names = headers
+        for row in result["results"]:
+            table.add_row([row[h] for h in headers])
+        print(f"[INFO] Nmap Scan Results: {result.get('scan_type', '')}\n")
+        print(table)
+
+        # Optional OS / CPE info
+        if "os_info" in result:
+            print(f"[INFO] OS Detection: {result['os_info']}")
+        if "cpe_info" in result:
+            print(f"[INFO] CPE Info: {result['cpe_info']}")
+
+    return result
 
 #IP address Tracker
 #========================================================================================================================
 def ip_finder(target):
     try:
-        # target = input("\033[1;91m[+] Enter Domain or IP Address: \033[1;m").lower()
-        url = ("http://ip-api.com/json/")
+        url = "http://ip-api.com/json/"
         response = urllib.request.urlopen(url + target)
         data = response.read()
         jso = json.loads(data)
+        
+        result = {
+            "URL": target,
+            "IP": jso.get("query", "N/A"),
+            "Status": jso.get("status", "N/A"),
+            "Region": jso.get("regionName", "N/A"),
+            "Country": jso.get("country", "N/A"),
+            "City": jso.get("city", "N/A"),
+            "ISP": jso.get("isp", "N/A"),
+            "Latitude": jso.get("lat", "N/A"),
+            "Longitude": jso.get("lon", "N/A"),
+            "Zipcode": jso.get("zip", "N/A"),
+            "Timezone": jso.get("timezone", "N/A"),
+            "AS": jso.get("as", "N/A"),
+            "Google Maps": f"https://maps.google.com/?q={jso.get('lat')},{jso.get('lon')}"
+        }
+        
+        # --- Optional: pretty print for CLI ---
         os.system("reset")
-        print("\033[34m[~] Searching IP Location Finder: \033[0m".format(url) + target)
+        print("\033[34m[~] Searching IP Location Finder: \033[0m" + target)
         time.sleep(1.5)
-
-        print("\n [+] \033[34mUrl: " + target + "\033[0m")
-        print(" [+] " + "\033[34m" + "IP: " + jso["query"] + "\033[0m")
-        print(" [+] " + "\033[34m" + "Status: " + jso["status"] + "\033[0m")
-        print(" [+] " + "\033[34m" + "Region: " + jso["regionName"] + "\033[0m")
-        print(" [+] " + "\033[34m" + "Country: " + jso["country"] + "\033[0m")
-        print(" [+] " + "\033[34m" + "City: " + jso["city"] + "\033[0m")
-        print(" [+] " + "\033[34m" + "ISP: " + jso["isp"] + "\033[0m")
-        print(" [+] " + "\033[34m" + "Lat & Lon: " + str(jso['lat']) + " & " + str(jso['lon']) + "\033[0m")
-        print(" [+] " + "\033[34m" + "Zipcode: " + jso["zip"] + "\033[0m")
-        print(" [+] " + "\033[34m" + "TimeZone: " + jso["timezone"] + "\033[0m")
-        print(" [+] " + "\033[34m" + "AS: " + jso["as"] + "\033[0m" + "\n")
+        
+        for key, val in result.items():
+            print(f" [+] \033[34m{key}: {val}\033[0m")
+        print()
         my_ruler()
-        print(" [+] " + "\033[34m" + "GOOGLE MAPS: " + "https://maps.google.com/?q=" + str(jso['lat']) + "," + str(jso['lon']) + "\033[0m")
+        
+        return result
+    
     except URLError:
         print("\033[1;31m[-] Please provide a valid IP address!\033[1;m")
+        return None
 
-
-
-def run_recon_module():
+def run_recon_module(url, host):
+    target = resolve_url_to_ip(url)
     print(
         '''
         Reconnaissance Module:
@@ -307,22 +345,30 @@ def run_recon_module():
         '''
     )
     choice = input("\nWhat would you like to do? (1-4): ").strip()
-
+    my_ruler()
 
     if choice == "1":
-        host = input("Enter domain or IP to perform WHOIS lookup: ").strip()
-        combined_whois_data = perform_combined_whois_lookup(host)
-        display_combined_whois_data(combined_whois_data)
+        combined_whois_data = perform_combined_whois_lookup(target)
+        whois_data = display_combined_whois_data(combined_whois_data)
+        if whois_data:  # append only if valid
+            Session.session.append({"type": "reconnaissance_WHOSIS", "data": whois_data})
+
     elif choice == "2":
-        url = input("Enter Target url:")
-        target = resolve_url_to_ip(url)
-        nmap_scans(target)
+        scan_values = nmap_scans(target)
+        if scan_values:  # append only if valid
+            Session.session.append({"type": "reconnaissance_PORTSCAN", "data": scan_values})
+
     elif choice == "3":
-        url = input("Enter Target url:")
-        target = resolve_url_to_ip(url)
-        ip_finder(target)
+        ip_info = ip_finder(target)
+        if ip_info:  # append only if valid
+            Session.session.append({"type": "reconnaissance_IPLOCATE", "data": ip_info})
+
     elif choice == "4":
         pass
     else:
         print("\n[!] Invalid choice. Please try again.")
         time.sleep(1)
+
+
+
+#run_recon_module(url, host)
