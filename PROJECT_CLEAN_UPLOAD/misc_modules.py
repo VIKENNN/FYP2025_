@@ -5,6 +5,13 @@ import socket
 from urllib.parse import urlparse
 
 
+
+def clean_target(target):
+    parsed = urlparse(target if target.startswith(('http://', 'https://')) else 'http://' + target)
+    if parsed.netloc:
+        return parsed.netloc  # hostname only
+    return target
+
 def resolve_url_to_ip(url): #Resolves a given URL or hostname to an IP address.
     try:
         # Extract hostname from URL if needed
