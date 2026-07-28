@@ -11,7 +11,7 @@ import urllib.request
 #from urllib.request import urlopen
 from urllib.error import URLError
 import nmap
-from PROJECT_draft.misc_modules import my_ruler
+from misc_modules import my_ruler
 from misc_modules import resolve_url_to_ip
 
 #WHOIS Function
